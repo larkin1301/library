@@ -2,25 +2,41 @@
 session_start();
 require_once 'config/db.php';
 
+//check for login
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
 //checkout
 if (isset($_GET['checkout'])) {
-    $resource_id = (int)$_GET['checkout'];
+    $resourceId = (int)$_GET['checkout'];
+    $userId = $_SESSION['user_id'];
 
-    //if available, checkout
-    $stmt = $pdo->prepare("SELECT available FROM resources WHERE id = ?");
-    $stmt->execute([$resource_id]);
+    // Check if media is available
+    $stmt = $pdo->prepare("SELECT * FROM resources WHERE id = ? AND available = 1");
+    $stmt->execute([$resourceId]);
     $resource = $stmt->fetch();
 
-    if ($resource && $resource['available']) {
-        $stmt = $pdo->prepare("INSERT INTO loans (user_id, resource_id) VALUES (?, ?)");
-        $stmt->execute([$_SESSION['user_id'], $resource_id]);
+    if ($resource) {
+        // Mark media as checked out (available = 0)
+        $update = $pdo->prepare("UPDATE resources SET available = 0 WHERE id = ?");
+        $update->execute([$resourceId]);
 
-        $stmt = $pdo->prepare("UPDATE resources SET available = 0 WHERE id = ?");
-        $stmt->execute([$resource_id]);
+        // Record loan in a loans table
+        $loan = $pdo->prepare("INSERT INTO loans (user_id, resource_id, checkout_date, return_date) VALUES (?, ?, NOW(), DATE_ADD(NOW(), NULL))");
+        $loan->execute([$userId, $resourceId]);
 
-        header('Location: resources.php');
-        exit;
+        // (Optional) send an email notification here...
+
+        $_SESSION['success_message'] = "You have successfully borrowed: " . htmlspecialchars($resource['title']);
+    } else {
+        $_SESSION['error_message'] = "Sorry, this media is not available.";
     }
+
+    // Redirect back to search or wishlist page
+    header("Location: search.php");
+    exit();
 }
 
 //return

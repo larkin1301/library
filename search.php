@@ -4,7 +4,7 @@ require 'config/db.php';
 
 $searchResults = [];
 
-// Handle form submit
+//form submission
 if (isset($_GET['q'])) {
     $q = trim($_GET['q']);
     if ($q !== '') {
@@ -22,6 +22,18 @@ if (isset($_GET['q'])) {
 </head>
 <body>
     <h1>Search Media</h1>
+
+    <!-- success/error messages -->
+    <?php if (isset($_SESSION['success_message'])): ?>
+        <p style="color: green;"><?= $_SESSION['success_message'] ?></p>
+        <?php unset($_SESSION['success_message']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['error_message'])): ?>
+        <p style="color: red;"><?= $_SESSION['error_message'] ?></p>
+        <?php unset($_SESSION['error_message']); ?>
+    <?php endif; ?>
+    <!-- end of messages -->
 
     <form method="get" action="search.php">
         <input type="text" name="q" placeholder="Enter media title" value="<?= isset($_GET['q']) ? htmlspecialchars($_GET['q']) : '' ?>">
@@ -55,6 +67,13 @@ if (isset($_GET['q'])) {
                                 <?php else: ?>
                                     Not available
                                 <?php endif; ?>
+                            <?php endif; ?>
+
+                            <!-- wishlist button -->
+                            <?php if (isset($_SESSION['user_id'])): ?><br>
+                                <a href="resources.php?checkout=<?= $resource['id'] ?>">Add to Wishlist</a>
+                            <?php else: ?><br>
+                                <small>Login to wishlist</small>
                             <?php endif; ?>
                         </td>
                     </tr>
