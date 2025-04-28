@@ -17,7 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim($_POST['title']);
     $author = trim($_POST['author']);
     $type = $_POST['type'];
-    $format = trim($POST['format']);
+    $format = trim($_POST['format']);
+    $branch_id = (int)$_POST['branch_id'];
 
     $cover_image = null;
     $file_path = null;
@@ -25,22 +26,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     //upload for cover image
     if (!empty($_FILES['cover_image']['name'])) {
         $cover_dir = 'uploads/covers/';
+        if (!is_dir($cover_dir)) {
+            mkdir($cover_dir, 0755, true);
+        }
         $cover_image = time() . '_' . basename($_FILES['cover_image']['name']);
-        move_uploaded_file($_FILES['cover_image']['tmp_name'], $cover_dir . $cover_image);
+        if (!move_uploaded_file($_FILES['cover_image']['tmp_name'], $cover_dir . $cover_image)) {
+            echo "Failed to upload cover image.";
+            $cover_image = null;
+        }
     }
 
-    //upload for virtual media, if resource is audio book, ebook etc.
+    //upload for virtual media, if resource is audio book, ebook
     if ($type === 'virtual' && !empty($_FILES['file']['name'])) {
         $file_dir = 'uploads/files/';
+        if (!is_dir($file_dir)) {
+            mkdir($file_dir, 0755, true);
+        }
         $file_path = time() . '_' . basename($_FILES['file']['name']);
-        move_uploaded_file($_FILES['file']['tmp_name'], $file_dir . $file_path);
+        if (!move_uploaded_file($_FILES['file']['tmp_name'], $file_dir . $file_path)) {
+            echo "Failed to upload media file.";
+            $file_path = null;
+        }
     }
 
-    $stmt = $pdo->prepare("INSERT INTO resources (title, author, type, format, cover_image, file_path) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT INTO resources (title, author, type, format, cover_image, file_path, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
     try {
-        $stmt->execute([$title, $author, $type, $format, $cover_image, $file_path]);
-        echo "Resource sucessfully added!";
+        $stmt->execute([$title, $author, $type, $format, $cover_image, $file_path, $branch_id]);
+        echo "Resource successfully added!";
     } catch (PDOException $e) {
         echo "Error: " . $e->getMessage();
     }
@@ -48,6 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 
 <h2>Add New Resource</h2>
+<a href="dashboard.php">Return to Dashboard</a>
+
 <form method="POST" enctype="multipart/form-data">
     <input type="text" name="title" placeholder="Title" required><br>
     <input type="text" name="author" placeholder="Author" required><br>
@@ -59,6 +74,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </select><br>
 
     <input type="text" name="format" placeholder="Format (e.g., Book, DVD, EBook)" required><br>
+
+    <label>Branch ID:</label>
+    <input type="number" name="branch_id" placeholder="Branch ID" required><br>
 
     <label>Cover Image (Optional):</label>
     <input type="file" name="cover_image" accept="image/*"><br>
